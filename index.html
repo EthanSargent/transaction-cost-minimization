@@ -1,0 +1,316 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <title>Ethan Sargent</title>
+  <meta name="description" content="TMM Project">
+  <meta name="author" content="Ethan Sargent">
+
+  <link rel="stylesheet" href="styles.css">
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS_CHTML' async></script>
+</head>
+
+<body>
+    <div class="page-body">
+        <img src="images/farewell.png" alt="Farewell" class="sub-page-main-photo">
+        <div class="info-container">
+        	<h1>Portofolio optimization with transaction costs</h1>
+          <br>
+            <h2>Implementing and extending a popular approach.</h2>
+
+            <p>
+            In this post, we assess and modestly extend a popular method <a href="#paper">[1]</a> for portfolio optimization with linear and fixed transaction costs. To view my implementation, see my notebook file.
+            </p>
+
+            <h3>Portfolio optimization in general.</h3>
+            <h4> Objective.</h4>
+            <p>
+            In single-period portfolio optimization, we have a bundle of stocks indexed by \(1, \dots, n - 1\), a riskless asset indexed by \(n\), initial dollar holdings in each asset \(w_1, \dots, w_n\), and at the beginning of the period, we transact dollar amounts \(x_1, \dots, x_n\) in each asset. In the paper, and in this study, we hold the portfolio for a fixed period of 20 days. We assume that the return of each asset at the end of the period is a random vector \(a\) with mean \(\overline{a}\) and covariance matrix \(\Sigma\). Thus we want to select \(x\) such that \(\overline{a}^T(w + x)\), i.e. the mean return of our portfolio, is maximized.
+            </p>
+
+            <h4>Constraints.</h4>
+            <p>Following the paper, we impose a number of constraints.</p>
+            <p><em>Self-financing</em>. The portfolio must be self-financing, i.e. each purchase of an asset must be financed by the sale of an existing asset. Since we incorporate transaction costs, and potentially a different transaction cost function \(\phi_i\) for each asset \(i\), the self-financing constraint is
+			\[
+			\mathbf{1}^T x + \sum_{i} \phi_i(x_i) \leq 0.
+			\]
+			</p>
+
+			<p><em>Constraint on the variance of final return</em>. If \(W = a^T(w + x)\) is the random variable representing the final return, then 
+			\[
+			\begin{align*}
+			\mathbf{V}(W) &= \mathbf{E}(W^2) - \mathbf{E}(W)^2\\
+			&= (w+x)^T \mathbf{E}((a - \overline{a})(a - \overline{a})^T)(w + x)\\
+			&= (w + x)^T\Sigma (w + x).
+			\end{align*}
+			\]
+			so constraining the variance to be less than \(\sigma^2\) yields the standard-form constraint
+			\[
+			(w + x)^T\Sigma (w + x) - \sigma^2 \leq 0.
+			\]
+			</p>
+
+			<p><em>Short position constraint</em>. We bound the position \(w_i + x_i\) in asset \(i\) below by \(-s_i\). In the paper, \(s_i\) is taken to be \(.05\) for stocks and \(.5\) for the riskless asset; we follow suit.<br><br>
+
+			The final problem, in standard form, is
+			\[
+			\begin{align}
+			\text{maximize} \quad & \overline{a}^T(w + x)\\
+			\text{subject to} \quad & \mathbf{1}^T x + \sum_{i} \phi_i(x_i) \leq 0\\
+			                & (w + x)^T\Sigma (w + x) - \sigma^2 \leq 0\\
+			                & -s - w - x \leq 0.
+			\end{align}
+			\]
+			When the transaction cost function is convex (e.g., \(0\) in the case of no transaction costs), the above is a convex optimization problem and can be solved very quickly.
+			</p>
+
+			<h3>Non-convex transaction cost functions</h3>
+            <p>
+            The authors note that
+            <blockquote>
+            	In practice, transaction costs are not convex functions of the amount traded. Indeed, the costs for either buying or selling are likely to be concave. For example, a fixed charge for any nonzero trade is common, and there may be one or more breakpoints above which the transaction costs per share decrease.
+            </blockquote>
+            They choose a fixed-plus-linear transaction cost function
+			\[
+			\phi_i(x_i) = \begin{cases}
+			0, & x_i = 0\\
+			\beta_{i}^+ + \alpha_{i}^+ x_i, & x_i > 0\\
+			\beta_{i}^- + \alpha_{i}^- x_i, & x_i < 0
+			\end{cases}
+			\]
+			to reflect this intuition; the function is illustrated below. Unfortunately, if we use this cost function, the self-financing constraint, and hence the problem, is no longer convex.
+            </p>
+            <figure>
+            <img src="images/fixed_plus_linear.png" alt="Example fixed plus linear transaction cost function." class="plot", width="400",height="255">
+            <figcaption>Fixed-plus-plus linear cost function. Note the function has value \(0\) at \(0\). Figure taken from paper.
+        </figure>
+            <p>
+            
+            </p>
+
+            <h3>The Method.</h3>
+
+            <p>
+            To get around this, the authors propose a solving a sequence of convex optimization problems whose solutions converge to an approximate solution of the original (non-convex) problem.
+            </p>
+
+            <h4>Solving a relaxed problem to get an initial guess.</h4>
+
+            <p>
+            Suppose \(x_i\) is restricted to the interval \(l_i, u_i\). Then define the <em>convex envelope</em> of \(\phi_i\) to be
+            \[
+            	\phi_i^{\text{c.e.}} = \begin{cases}
+            		\left(\frac{\beta_i}{u_i} + \alpha_i\right) x_i, & x_i \geq 0\\
+            		-\left(\frac{\beta_i}{l_i} + \alpha_i\right)x_i, & x_i \leq 0
+            	\end{cases}
+            \]
+            where \(\alpha_i\) and \(\beta_i\) are the parameters of \(\phi_i \). This function is a convex lower bound on \(\phi_i\). Therefore 
+            <ul>
+            	<li> The original, non-convex optimization problem above, with \(\phi_i\) replaced by \(\phi_i^{\text{c.e.}}\), is a convex optimization problem. We call this problem the <em>relaxed problem</em>, and can solve it quickly to get an initial guess for the iterative scheme, to be discussed next.</li>
+            	<br>
+            	<li> The self-financing constraint for the relaxed problem is less strict, because the convex envelope is a lower bound on the original transaction cost function. Therefore the solution to the relaxed problem is an upper bound on the solution to the original problem.</li>
+            	<br>
+            	<li>
+            	Any solution to the relaxed problem is likely to be infeasible for the original, non-convex problem - in particular, unless \(x_i = l_i,\, 0, \text{ or }u_i\), i.e., the convex envelope and \(\phi_i\) agree at \(x_i\), the self-financing constraint is likely to be violated.
+            	</li>
+            </ul>
+            So the iterative scheme must provably converge from the initial guess (infeasible) to a solution that is feasible for the original problem, if not provably optimal.
+            </p>
+            <figure>
+            <img src="images/envelope.png" alt="Convex envelope function and original non-convex transaction cost function. Figure taken from paper." class="plot", width="400",height="255">
+            <figcaption>Convex envelope function and original non-convex transaction cost function. Figure taken from paper.</figcaption>
+       		 </figure>
+       		 <p>
+       		 To compute transaction bounds \(l_i, u_i\), we take advantage of the constraint on the variance of portfolio return. The bounds will depend on how much variance we are comfortable with, i.e. \(\sigma^2\). The upper bound is given by
+			\[
+			\begin{align*}
+			\text{maximize} \quad & x_i\\
+			\text{subject to} \quad & g(x) = (w + x)^T\Sigma(w + x) - \sigma^2 \leq 0
+			\end{align*}
+			\]
+
+			The calculation is omitted in the paper but we do it here for practice. The Lagrangian is
+			\[
+			L(x, \lambda) = e_i^T x  - \lambda((w + x)^T\Sigma(w + x) - \sigma^2).
+			\]
+			Maximizing over \(x\) yields
+			\begin{equation*}
+			x = \frac{\Sigma^{-1}e_i}{2\lambda} - w
+			\end{equation*}
+			Resubstituting into the Lagrangian to eliminate the dependence on \(x\) and simplifying, we have
+			\begin{equation*}
+			L(\lambda) = \frac{e_i^T \Sigma^{-1} e_i}{4\lambda} - e_i^T w + \lambda \sigma^2
+			\end{equation*}
+			which achieves its maximum at 
+			\begin{equation*}
+			\lambda = \frac{\sqrt{(\Sigma^{-1})_{ii}}}{2\sigma}
+			\end{equation*}
+			so that \(x_i = \sigma\sqrt{(\Sigma^{-1})_{ii}} - w_i\) is optimal. Mutatis mutandis, the lower bound is \(x_i = -\sigma\sqrt{(\Sigma^{-1})_{ii}} - w_i\). For the lower bound, we use this value or the short selling lower bound, whichever is larger.
+       		 </p>		
+       		 <h4>The iterative scheme.</h4>
+       		 Here we present and justify the the iterative scheme. For a full discussion, see the paper. Let \(\delta\) be a small, nonnegative number, and let \(S = \{x: x \text{ satisfies whatever convex risk constraints we choose to impose}\}\). Then the procedure is as follows:
+       		 <ol>
+       		 	<li>\(\mathbf{k:=0}\). Solve the convex relaxed problem above; let \(x^0\) be the solution to this problem.</li>
+       		 	<li>\(\mathbf{k:=k+1}\). Where \(x^{k-1}\) is the solution to the previous problem, let
+       		 		\[
+       		 		\phi_i^k(x_i) = \left(\frac{\beta_i}{|x_i^{k-1}| + \delta} + \alpha_i\right)|x_i|,
+       		 		\]
+       		 		and solve the modified problem
+       		 		\[
+       		 		\begin{align}
+					\text{maximize} \quad & \overline{a}^T(w + x)\\
+					\text{subject to} \quad & \mathbf{1}^T x + \sum_{i} \phi_i^k(x_i) \leq 0\\
+					                & x \in S.
+					\end{align}
+       		 		\]
+       		 		Let \(x_k\) be the solution to this problem.
+       		 	</li>
+       		 	<li>
+       		 		Repeat until convergence.
+       		 	</li>
+       		 </ol>
+       		 The scheme has two desirable properties.
+       		 <ol>
+       		 	<li><em>Converges to a feasible point of the original problem.</em> If the scheme converges, i.e \(x_i^{k+1} \approx x_i^k\), then
+       		 		\[
+       		 		\phi_i^k(x_i^{k+1}) = \left(\frac{\beta_i}{|x_i^k| + \delta} + \alpha_i\right)|x_i^{k+1}| \approx \beta_i + \alpha_i|x_i^{k+1}| = \phi_i(x_i^{k+1}),
+       		 		\]
+       		 		that is, the modified transaction cost function agrees with the original, con-convex transaction cost function at the solution, so that the solution is feasible for the original problem. The proof that the scheme converges is deferred to the appendix of the paper.
+       		 	</li>
+       		 	<br>
+       		 	<li>
+       		 	<em>Drives small transactions to \(0\).</em> Intuitively, the solution should not have small transactions - a small transaction incurs the fixed cost, with marginal extra return. Note that when \(x_i^{k-1}\) is small, the derivative of \(\phi_i^k(x_i)\) is quite large, thus \(x_i\) will be driven to \(0\).
+       		 	</li>
+       		 </ol>
+       		 <h4>Identifying the optimal solution combinatorially.</h4>
+       		 For a small number of assets, the exact solution can be identified combinatorially. Concretely, given \(n\) assets, choose a subset \(i_1, \dots, i_k\) in which to transact. Then the problem
+       		 \[
+   		 		\begin{align}
+				\text{maximize} \quad & \overline{a}^T(w + x)\\
+				\text{subject to} \quad & \mathbf{1}^T x + \alpha_i |x_i| + \sum_{i_j} \beta_{i_j} \leq 0\\
+				                & x \in S.
+				\end{align}
+       		 \]
+       		 is convex, and the solution to the original, non-convex problem is just the optimal solution to the problem above over all possible subsets of \(1, \dots, n\). In particular, we solve \(2^n\) convex optimization problems. The authors use this method to verify that solutions to the iterative scheme are nearly-optimal.
+
+       		<h3>Example with real data.</h3>
+            <p>
+            We implement the iterative scheme, as well as the combinatorial method, and test them on real data.
+            </p>
+
+            <h4>Gathering the data.</h4>
+            <p>
+            We compute historical returns for the top 100 (alphabetical) S&P stocks over randomly sampled twenty-day periods in 2020, and the sample mean \(\overline{a}\) and covariance matrix \(\Sigma\) of these returns.
+            </p>
+
+            <img src="images/returns_hist.png" alt="Histogram of mean returns over 20-day holding periods." class="plot", width="350",height="200">
+            <h4>Comparing the heuristic and provably-optimal methods.</h4>
+            <p>So that the combinatorial solution is tractable, we apply the iterative scheme to a bundle consisting of the last 10 stocks of the 100 stocks above, plus a riskless asset. The optimal and heuristic returns are compared for a range of values of \(\sigma\), the variance of the final portfolio return that is acceptable. Evidently, for a small bundle of stocks, the heuristic and optimal returns coincide exactly.
+            </p>
+            <img src="images/hvo.png" alt="Histogram of mean returns over 20-day holding periods." class="plot", width="350",height="200">
+
+            <h4>The role of the short position constraint.</h4>
+            <p>
+            We see in the above return tradeoff curves that the optimal return flatlines after a certain point - this is because, even allowing massive final return variance, we cannot increase our risk (and thus our return) without deepening our short positions in the riskless asset or in stocks with meager return. Recall that for our holdings in each risky asset \(i\) we have a short constraint \(w_i + x_i \geq -.05\), and for the riskless asset \(w_i + x_i \geq -.5\).
+        	</p><p>
+			If we double the maximum short position in each stock (\(.05 \to .1\)) and riskless asset (\(.5 \to 1\)), the curve flattens later.
+            </p>
+            <img src="images/short.png" alt="Heuristic expected return with different short constraints." class="plot", width="350",height="200">
+            <h4>Our choice of stock.</h4>
+            Above, following the paper, we selected the last 10 stocks of the first 100 (alphabetical) of the S&P 500. How much does optimal return depend on the choice of stock bundle? We compute the heuristic expected return at \(\sigma=.2\) for 100 random size-10 subsets of the top 100 stocks - the answer, it seems, is a lot. The outliers all have one stock in common: CZR, which cratered in early 2020 but quickly recovered.
+            <img src="images/bundles_hist.png" alt="Heuristic expected return with different short constraints." class="plot", width="400",height="250">
+            <h3>A closer look at shortfall risk constraints.</h3>
+            <h4>Normallly distributed returns.</h4>
+            <p>
+            A shortfall risk constraint specifies that the end of period wealth should exceed some undesired level \(W_{\text{low}}\) with probability \(\eta\). The authors assume that returns are Gaussian - in that case, where \(\Phi\) is the Gaussian CDF, the constraint is
+            \[
+            \begin{align*}
+            \Pr \left(\frac{W - \mu}{\sigma} \leq \frac{W_{\text{low}} - \mu}{\sigma} \right) &\leq 1 - \eta.\\
+            & \leftrightarrow \frac{W_{\text{low}} - \mu}{\sigma} \leq \Phi^{-1}(1 - \eta)\\
+            & \leftrightarrow \mu - W_{\text{low}} \geq \Phi^{-1}(\eta)\sigma
+            \end{align*}
+            \]
+            so that by substituting \(\mu = \overline{a}^T(w + x)\) and \(\sigma^2 = (w + x)^T\Sigma(w + x)\), we get 
+            \[
+            \overline{a}^T(w + x) - W_{\text{low}} \geq \Phi^{-1}(\eta) \|\Sigma^{1/2}(w + x)\|_2
+            \]
+            which is a second-order cone constraint. Below, we depict how the addition of a shortfall constraint \((\eta = .9, W_{\text{low}} = .8)\) affects the optimal return for different values of \(\sigma\).
+            <figure>
+            <img src="images/normal_shortfall.png" alt="Heuristic expected return with different short constraints." class="plot", width="350",height="200">
+        	<figcaption></figcaption>
+        	</figure>
+        	The fact that the two curves coincide, then diverge is not surprising, since there is a correspondence between shortfall constraints and constraints on the variance of the final return. If we allow the variance to increase, then the portfolios diverge because the variance constraint no longer dominates the shortfall constraint.
+        	<h4>Investigating the normality assumption.</h4>
+        	<p>
+        	The authors imposed the normality assumption only to provide a proof of concept. However, they qualify that stock returns are seldom normal - in particular, they have high kurtosis (fat tails).</p>
+        	<p>We test this hypothesis on our return data. For each stock, we generate 1000 Gaussian replicates (1000 samples each) with the same mean and variance, and compute the percentage of the time a kurtosis as or more extreme as in the real data is observed.
+        	</p>
+        	<p>Almost all the time, the real data's kurtosis is larger than all kurtoses observed with synthetic Gaussian data of the same mean and variance. So not only is our data not normal, but also our current shortfall constraints are particularly useless because our data have such fat tails.
+        	</p>
+        	<img src="images/kurtosis.png" alt="Heuristic expected return with different short constraints." class="plot", width="350",height="200">
+        	<h4>Chebyshev's inequality.</h4>
+        	The authors mention but do not derive another shortfall risk constraint due to Chebyshev's inequality. We derive it here and later propose a tightening of the resulting bound. Recall that for a random variable \(X\) with finite mean \(\mu\) and variance \(\sigma^2\), we have (Chebyshev's inequality)
+        	\[
+        	\Pr(|X - \mu| > t) \leq \frac{\sigma^2}{t^2}.
+        	\]
+        	Assuming \(W_{\text{low}} \leq \mu\), we have
+			\[
+			\Pr(W \leq W_{\text{low}}) \leq \Pr(|W - \mu| \geq |W_{\text{low}} - \mu|)
+			\]
+			so that by Chebyshev's inequality,
+			\[
+			\Pr(W \leq W_{\text{low}}) \leq \frac{\sigma^2}{(W_{\text{low}} - \mu)^2}.
+			\]
+			The constraint bounds the RHS above by \(1 - \eta\). Substituting for \(\sigma\) and \(\mu\), rearranging, and taking the square root of both sides, we get the second-order cone constraint
+			\[
+			(1 - \eta)^{-1/2} \| \Sigma^{1/2} (w + x)\| \leq \overline{a}^T(w + x) - W_{\text{low}}.
+			\]
+			As expected, the Chebyshev constraint produces worse returns than the normal constraint since it is valid for a wider class of distributions. The normal constraint, on the other hand, coincides exactly with the return curve of the solution without shortfall constraints (not shown).
+			<img src="images/cvn.png" alt="Heuristic expected return with different short constraints." class="plot", width="350",height="200">
+			<h4>Tightening the Chebyshev bound.</h4>
+			<p>
+			The Chebyshev bound computed above is computed with the following step:
+			\[
+			\Pr(W \leq W_{\text{low}}) \leq \Pr(|W - \mu| \geq |W_{\text{low}} - \mu|).
+			\]
+			We invoked Chebyshev to dominate the right hand side. However, we are potentially giving up a lot of slack with the inequality above. Concretely, if the distribution is symmetric, then
+			\[
+			\Pr(W \leq W_{\text{low}}) = \frac{1}{2}\Pr(|W - \mu| \geq |W_{\text{low}} - \mu|)
+			\]
+			so that the original constraint has us dominating a quantity twice as large as necessary. In general, we are able to say that
+			\[
+			\Pr(W \leq W_{\text{low}}) \leq \frac{1}{2}\Pr(|W - \mu| \geq |W_{\text{low}} - \mu|).
+			\]
+			when the distribution is symmetric (exact equality) or when there is relatively more mass above \(\mu + (\mu - W_{\text{low}})\) than below \(W_{\text{low}}\). For a range of values for \(W_{\text{low}}\), we can estimate the fraction 
+			\[
+			\Pr(W \leq W_{\text{low}})/(\Pr(W \leq W_{\text{low}}) + \Pr(W \geq 2\mu - W_{\text{low}}));
+			\]
+			if it is below .5, the tightening is justified. It suffices to consider the individual stocks - we compute the mean of the fractions above across all the stocks for a range of values \(W_{\text{low}}\). It appears that as \(W_{\text{low}}\) decreases, the fraction decreases; i.e. the tightening is more justified for more relaxed shortfall constraints.
+			<img src="images/tighten.png" alt="Heuristic expected return with different short constraints." class="plot", width="350",height="200">
+			The tight Chebyshev constraint produces returns comparable to the normal constraint and the solution without shortfall constraints - we have imposed a single constraint that return exceed \(.7\) with probability \(.95\). By contrast, the "vanilla" Chebyshev constraint with the same \(\eta\) and \(W_{\text{low}}\) is mostly useless - with its too-conservative constraint on variance, the vanilla Chebyshev portfolio is forced to incur transaction costs to deepen its position in the riskless asset, and incurs a loss, on average.
+			</p>
+			<p>At \(\sigma=.2\) and with short position constraints of .05 and .5 in the risky and riskless assets respectively, the tight-Chebyshev portfolio earns a return of 1.16%, or 15% annualized.
+			</p>
+			<img src="images/tvr.png" alt="Heuristic expected return with different short constraints." class="plot", width="350",height="200">
+            <h3>Caveats.</h3>
+            <p>
+            There are a number of drawbacks to this method that are worth mentioning. First, and most seriously, the framework assumes that crudely estimated historical means and covariances of returns in a bundle of stocks are predictive of means and covariances of returns in an upcoming 20-day period. Future work would surely involve a backtest to gauge the effectiveness of this method in real-time trading.
+            </p>
+            <p>
+            Second, we have only studied the iterative scheme in the context of fixed-plus linear transaction cost functions. We do not know how it behaves with other cost functions; this is not an idle concern, since for large portfolios, transactions are likely to incur a fixed plus <em>nonlinear</em> cost, as we clear out more of the order book to complete the transaction. Moreover, for even modest numbers of stocks, we cannot check the convergence of the heuristic against the combinatorial optimum, since the latter is too costly to compute.
+            </p>
+
+            <h3>References.</h3>
+
+            <ol>
+                <li id="paper"><em>Portfolio optimization with linear and fixed transaction costs</em> by Miguel Sousa Lobo, Maryam Fazel, and Stephen Boyd. <em>Annals of Operations Research</em>. 2007.</li>
+            </ol>
+
+            <p>Author: Ethan Sargent</p>
+            <p>Date: June 24, 2021</p>
+        </div>
+    </div>
+</body>
+</html>
