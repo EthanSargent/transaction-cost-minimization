@@ -14,13 +14,13 @@
 
 <body>
     <div class="page-body">
-        <img src="images/farewell.png" alt="Farewell" class="sub-page-main-photo">
+        <img src="images/ocean.png" alt="" class="sub-page-main-photo">
         <div class="info-container">
         	<h1>Portofolio optimization with transaction costs</h1>
           <br>
             <h2>Implementing and extending a popular approach.</h2>
             <p>
-            In this post, we assess and modestly extend a popular method <a href="#paper">[1]</a> for portfolio optimization with linear and fixed transaction costs. To view my implementation, see my <a href="https://github.com/EthanSargent/transaction-cost-minimization/blob/main/transaction-cost-minimization.ipynb">notebook file</a>.
+            In this post, we assess and modestly extend a popular method <a href="#paper">[1]</a> for portfolio optimization with linear and fixed transaction costs. Our implementation is <a href="https://github.com/EthanSargent/transaction-cost-minimization/blob/main/transaction-cost-minimization.ipynb">here</a>.
             </p>
 
             <h3>Portfolio optimization in general.</h3>
@@ -51,7 +51,7 @@
 			\]
 			</p>
 
-			<p><em>Short position constraint</em>. We bound the position \(w_i + x_i\) in asset \(i\) below by \(-s_i\). In the paper, \(s_i\) is taken to be \(.05\) for stocks and \(.5\) for the riskless asset; we follow suit.<br><br>
+			<p><em>Short position constraint</em>. We bound the position \(w_i + x_i\) in asset \(i\) below by \(-s_i\). In the paper, and here, \(s_i\) is taken to be \(.05\) for stocks and \(.5\) for the riskless asset.<br><br>
 
 			The final problem, in standard form, is
 			\[
@@ -71,7 +71,7 @@
             <blockquote>
             	In practice, transaction costs are not convex functions of the amount traded. Indeed, the costs for either buying or selling are likely to be concave. For example, a fixed charge for any nonzero trade is common, and there may be one or more breakpoints above which the transaction costs per share decrease.
             </blockquote>
-            They choose a fixed-plus-linear transaction cost function
+            They choose a fixed plus linear transaction cost function
 			\[
 			\phi_i(x_i) = \begin{cases}
 			0, & x_i = 0\\
@@ -83,7 +83,7 @@
             </p>
             <figure>
             <img src="images/fixed_plus_linear.png" alt="Example fixed plus linear transaction cost function." class="plot", width="400",height="255">
-            <figcaption>Fixed-plus-plus linear cost function. Note the function has value \(0\) at \(0\). Figure taken from paper.
+            <figcaption>Fixed plus linear cost function. Note the function has value \(0\) at \(0\). Figure taken from paper.
         </figure>
             <p>
             
@@ -122,14 +122,13 @@
             <figcaption>Convex envelope function and original non-convex transaction cost function. Figure taken from paper.</figcaption>
        		 </figure>
        		 <p>
-       		 To compute transaction bounds \(l_i, u_i\), we take advantage of the constraint on the variance of portfolio return. The bounds will depend on how much variance we are comfortable with, i.e. \(\sigma^2\). The upper bound is given by
+       		 Before moving on, we compute transaction bounds \(l_i, u_i\) - to do this, we take advantage of the constraint on the variance of portfolio return. The bounds will depend on how much variance we are comfortable with, i.e. \(\sigma^2\). The upper bound \(u_i\) is given by
 			\[
 			\begin{align*}
 			\text{maximize} \quad & x_i\\
 			\text{subject to} \quad & g(x) = (w + x)^T\Sigma(w + x) - \sigma^2 \leq 0
 			\end{align*}
 			\]
-
 			The calculation is omitted in the paper but we do it here for practice. The Lagrangian is
 			\[
 			L(x, \lambda) = e_i^T x  - \lambda((w + x)^T\Sigma(w + x) - \sigma^2).
@@ -176,7 +175,7 @@
        		 		\[
        		 		\phi_i^k(x_i^{k+1}) = \left(\frac{\beta_i}{|x_i^k| + \delta} + \alpha_i\right)|x_i^{k+1}| \approx \beta_i + \alpha_i|x_i^{k+1}| = \phi_i(x_i^{k+1}),
        		 		\]
-       		 		that is, the modified transaction cost function agrees with the original, con-convex transaction cost function at the solution, so that the solution is feasible for the original problem. The proof that the scheme converges is deferred to the appendix of the paper.
+       		 		that is, the modified transaction cost function agrees with the original, non-convex transaction cost function at the solution, so that the solution is feasible for the original problem. The proof that the scheme converges is deferred to the appendix of the paper.
        		 	</li>
        		 	<br>
        		 	<li>
@@ -184,7 +183,7 @@
        		 	</li>
        		 </ol>
        		 <h4>Identifying the optimal solution combinatorially.</h4>
-       		 For a small number of assets, the exact solution can be identified combinatorially. Concretely, given \(n\) assets, choose a subset \(i_1, \dots, i_k\) in which to transact. Then the problem
+       		 For a small number of assets, the exact solution can be identified combinatorially as follows. Given \(n\) assets, choose a subset \(i_1, \dots, i_k\) in which to transact. Then the problem
        		 \[
    		 		\begin{align}
 				\text{maximize} \quad & \overline{a}^T(w + x)\\
@@ -192,7 +191,7 @@
 				                & x \in S.
 				\end{align}
        		 \]
-       		 is convex, and the solution to the original, non-convex problem is just the optimal solution to the problem above over all possible subsets of \(1, \dots, n\). In particular, we solve \(2^n\) convex optimization problems. The authors use this method to verify that solutions to the iterative scheme are nearly-optimal.
+       		 is convex, and the solution to the original, non-convex problem is just the optimal solution to the problem above over all possible subsets of \(1, \dots, n\). That is, we solve \(2^n\) convex optimization problems. The authors use this method to verify that solutions to the iterative scheme are nearly optimal.
 
        		<h3>Example with real data.</h3>
             <p>
@@ -205,14 +204,14 @@
             </p>
 
             <img src="images/returns_hist.png" alt="Histogram of mean returns over 20-day holding periods." class="plot", width="350",height="200">
-            <h4>Comparing the heuristic and provably-optimal methods.</h4>
+            <h4>Comparing the heuristic and provably optimal methods.</h4>
             <p>So that the combinatorial solution is tractable, we apply the iterative scheme to a bundle consisting of the last 10 stocks of the 100 stocks above, plus a riskless asset. The optimal and heuristic returns are compared for a range of values of \(\sigma\), the variance of the final portfolio return that is acceptable. Evidently, for a small bundle of stocks, the heuristic and optimal returns coincide exactly.
             </p>
             <img src="images/hvo.png" alt="Histogram of mean returns over 20-day holding periods." class="plot", width="350",height="200">
 
             <h4>The role of the short position constraint.</h4>
             <p>
-            We see in the above return tradeoff curves that the optimal return flatlines after a certain point - this is because, even allowing massive final return variance, we cannot increase our risk (and thus our return) without deepening our short positions in the riskless asset or in stocks with meager return. Recall that for our holdings in each risky asset \(i\) we have a short constraint \(w_i + x_i \geq -.05\), and for the riskless asset \(w_i + x_i \geq -.5\).
+            We see in the above return tradeoff curves that the optimal return flatlines after a certain point - this is because, even allowing massive final return variance, we cannot increase our risk (and thus our return) without deepening our short positions in the riskless asset or in stocks with meager return. Recall that for our holdings in each asset \(i\) we have a short constraint \(w_i + x_i \geq -s_i\), where \(s_i\) is .05 and .5 for the risky and riskless assets respectively.
         	</p><p>
 			If we double the maximum short position in each stock (\(.05 \to .1\)) and riskless asset (\(.5 \to 1\)), the curve flattens later.
             </p>
@@ -223,7 +222,7 @@
             <h3>A closer look at shortfall risk constraints.</h3>
             <h4>Normallly distributed returns.</h4>
             <p>
-            A shortfall risk constraint specifies that the end of period wealth should exceed some undesired level \(W_{\text{low}}\) with probability \(\eta\). The authors assume that returns are Gaussian - in that case, where \(\Phi\) is the Gaussian CDF, the constraint is
+            A shortfall risk constraint specifies that the end of period wealth should exceed some undesired level \(W_{\text{low}}\) with probability \(\eta\). The authors assume that returns are Gaussian - in that case, the constraint is, where \(\Phi\) is the Gaussian CDF,
             \[
             \begin{align*}
             \Pr \left(\frac{W - \mu}{\sigma} \leq \frac{W_{\text{low}} - \mu}{\sigma} \right) &\leq 1 - \eta.\\
@@ -290,7 +289,7 @@
 			<img src="images/tighten.png" alt="Heuristic expected return with different short constraints." class="plot", width="350",height="200">
 			The tight Chebyshev constraint produces returns comparable to the normal constraint and the solution without shortfall constraints - we have imposed a single constraint that return exceed \(.7\) with probability \(.95\). By contrast, the "vanilla" Chebyshev constraint with the same \(\eta\) and \(W_{\text{low}}\) is mostly useless - with its too-conservative constraint on variance, the vanilla Chebyshev portfolio is forced to incur transaction costs to deepen its position in the riskless asset, and incurs a loss, on average.
 			</p>
-			<p>At \(\sigma=.2\) and with short position constraints of .05 and .5 in the risky and riskless assets respectively, the tight-Chebyshev portfolio earns a return of 1.16%, or 15% annualized.
+			<p>At \(\sigma=.2\) and with short position constraints of .05 and .5 in the risky and riskless assets respectively, the tight Chebyshev portfolio earns a return of 1.16%, or 15% annualized.
 			</p>
 			<img src="images/tvr.png" alt="Heuristic expected return with different short constraints." class="plot", width="350",height="200">
             <h3>Caveats.</h3>
@@ -298,7 +297,7 @@
             There are a number of drawbacks to this method that are worth mentioning. First, and most seriously, the framework assumes that crudely estimated historical means and covariances of returns in a bundle of stocks are predictive of means and covariances of returns in an upcoming 20-day period. Future work would surely involve a backtest to gauge the effectiveness of this method in real-time trading.
             </p>
             <p>
-            Second, we have only studied the iterative scheme in the context of fixed-plus linear transaction cost functions. We do not know how it behaves with other cost functions; this is not an idle concern, since for large portfolios, transactions are likely to incur a fixed plus <em>nonlinear</em> cost, as we clear out more of the order book to complete the transaction. Moreover, for even modest numbers of stocks, we cannot check the convergence of the heuristic against the combinatorial optimum, since the latter is too costly to compute.
+            Second, we have only studied the iterative scheme in the context of fixed plus linear transaction cost functions. We do not know how it behaves with other cost functions; this is not an idle concern, since for large portfolios, transactions are likely to incur a fixed plus <em>nonlinear</em> cost, as we clear out more of the order book to complete the transaction. Moreover, for even modest numbers of stocks, we cannot check the convergence of the heuristic against the combinatorial optimum, since the latter is too costly to compute.
             </p>
 
             <h3>References.</h3>
